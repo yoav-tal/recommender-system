@@ -1,0 +1,18 @@
+select
+    l.id_for_vendor,
+    l.redshifted_at,
+    substr(updated_value, strpos(updated_value, '-')+1) as template_name,
+    --right(updated_value, len(updated_value)- position('-' in updated_value)) as template_name,
+    case when r.id_for_vendor is null then false else true end as is_selected,
+    dense_rank () over (partition by l.id_for_vendor order by l.device_timestamp) as user_preview_number
+from `ltx-dwh-stg-ingested.usage.antares_usage_features` as l
+left join `ltx-dwh-stg-ingested.usage.antares_usage_templates` as r
+    on l.id_for_vendor = r.id_for_vendor
+    and l.session_id = r.session_id
+    --and right(updated_value, len(updated_value)- position('-' in updated_value)) = replace(template_name,'.json','')
+    and substr(updated_value, strpos(updated_value, '-')+1) = replace(template_name,'.json','')
+    and r.screen_name = 'TemplatePreview'
+where l.feature_name = 'TemplatePreview'
+and l.redshifted_at > '2019-10-01'
+and l.redshifted_at < '2020-01-01'
+order by l.id_for_vendor, l.device_timestamp

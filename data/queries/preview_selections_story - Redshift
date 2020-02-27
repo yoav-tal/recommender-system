@@ -1,0 +1,16 @@
+select
+    l.id_for_vendor,
+    l.redshifted_at,
+    l.template_name,
+    case when r.id_for_vendor is null then false else true end as is_selected,
+    dense_rank () over (partition by l.id_for_vendor order by l.device_timestamp) as user_preview_number
+from bambi_usage_preview_presented l
+left join bambi_usage_editor_presented r
+    on l.id_for_vendor = r.id_for_vendor
+    and l.session_id = r.session_id
+    and l.template_name = r.template_name
+    and reason in ('templatePreview_didTapEdit','templatePreview_didTapSeekToEndOfLastPage','templatePreview_playbackDidFinish')
+where l.redshifted_at > '2019-12-11'
+order by l.id_for_vendor, l.device_timestamp
+
+limit 50000
