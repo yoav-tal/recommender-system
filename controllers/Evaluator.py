@@ -1,59 +1,50 @@
 import numpy as np
-from recommendation.evaluation_module import EvaluationModule
-from controllers.data_handler import DataHandler
 from controllers.Viewer import ThumbnailViewer
 
 
 class Evaluator:
 
-    def __init__(self, DataHandler_instance):
+    def __init__(self):
 
-        self.data_handler = DataHandler_instance
-        self.evaluation_module = EvaluationModule(self.data_handler)
-        self.models = []
-        self.viewer = ThumbnailViewer(self.data_handler)
+        self.recommenders = []
+        self.viewer = ThumbnailViewer()
 
-    def add_model(self, model, name):
-        self.models.append((model, name))
+    def add_recommender(self, recommender, name):
+        self.recommenders.append((recommender, name))
+        if self.viewer.datahandler is None:
+            self.viewer.set_datahandelr(recommender.data_handler)
 
-    def evaluate(self, find_nearest_to=[], n_nearest_to=10, print_nearest=True,
+    def evaluate(self, find_nearest_to=None, n_nearest_to=10, print_nearest=True,
                  view_nearest=False, print_category_match_index=False,
                  calc_match_index=False, n_for_match_index=10,
-                 get_recom_for=[], n_for_recom=10,
-                 recom_scores_chart=None, print_recom=True, view_recom=False,
+                 get_recom_for=None, n_for_recom=10,
+                 print_recom=True, view_recom=False,
                  print_recom_category_match_index=False, calc_hitRate=False, n_for_hitRate=10,
                  show_hit_position_index=False, calc_novelty_score=False, n_for_novelty=10):
 
         if find_nearest_to:
-            self.find_nearest_to(find_nearest_to, n_nearest_to, print_nearest, view_nearest,
-                                 print_category_match_index)
+            self.find_nearest_items(find_nearest_to, n_nearest_to, print_nearest, view_nearest,
+                                    print_category_match_index)
 
         if calc_match_index:
             self.calculate_match_index(n_for_match_index)
 
         if get_recom_for:
-            self.recommend(get_recom_for, n_for_recom, recom_scores_chart, print_recom,
+            self.recommend(get_recom_for, n_for_recom, print_recom,
                            view_recom, print_recom_category_match_index)
 
         if calc_hitRate:
-            self.calculate_hit_rate(n_for_hitRate, recom_scores_chart, show_hit_position_index)
+            self.calculate_hit_rate(n_for_hitRate, show_hit_position_index)
 
         if calc_novelty_score:
-            self.calculate_novelty_score(n_for_novelty, recom_scores_chart)
+            self.calculate_novelty_score(n_for_novelty)
 
-    def calculate_hit_rate(self, n, scores_chart, show_hit_position_index):
-        LOO_data, left_out = self.data_handler.prepare_LOO_dataset()
+    def calculate_hit_rate(self, n, show_hit_position_index):
 
-        users_list = self.data_handler.getUserIds(dataset="LOO")
-        print("number of users in dataset: %g" % len(users_list))
-
-        for model, model_name in self.models:
-            similarities = model.GetSimilarities(LOO_data)
-            recomms = self.evaluation_module.get_recommendations_for_users(
-                users_list, similarities, n, scores_chart, dataset="LOO")
-            model_hit_rate = self.evaluation_module.calc_hit_rate(recomms, left_out)
-            print("Hit Rate of model %s with %g recommendations per user: %g\n" % (model_name, n,
-                                                                                   model_hit_rate))
+        for recommender, recommender_name in self.recommenders:
+            hit_rate = recommender.calc_hit_rate(n)
+            print("Hit Rate of recommender %s with %g recommendations per user: %g\n" %
+                  (recommender_name, n, hit_rate))
 
         if show_hit_position_index:
             # for each user, find the position in the ranked items of the left-out item,
@@ -63,138 +54,106 @@ class Evaluator:
     def calculate_match_index(self, n):
         # For each model, get n nearest neighbors for all items and calc match index (mean match
         # over items) of the model
-        match_indices = {}
-        data = self.data_handler.data
-        n_items = self.data_handler.getNumItems()
-        for model, model_name in self.models:
-            indices = []
-            similarities = model.GetSimilarities(data)
-            nearest_neighbors, distances = \
-                self.evaluation_module.get_item_neighbors(list(range(n_items)), similarities, n)
-            for item in range(n_items):
-                nearest_to_item = nearest_neighbors[item]
-                indices.append(self.evaluation_module.neighbor_category_match(item,
-                                                                              nearest_to_item))
-            match_indices[model_name] = indices
-            print("\nModel: %s \tmean index: %g" %
-                  (model_name, np.mean(match_indices[model_name])))
 
-    def calculate_novelty_score(self, n, scores_chart):
+        for recommender, recommender_name in self.recommenders:
+            match_index = recommender.calc_match_index(n)
+            print("\nModel: %s \tcategory match index: %g" % (recommender_name, match_index))
 
-        data = self.data_handler.data
+    def calculate_novelty_score(self, n):
 
-        users_list = self.data_handler.getUserIds()
-        print("number of users in dataset: %g" % len(users_list))
+        for recommender, recommender_name in self.recommenders:
+            novelty_score = recommender.calc_novelty_score(n)
+            print("Novely score of recommender %s with %g recommendations per user: %g\n" %
+                  (recommender_name, n, novelty_score))
 
-        for model, model_name in self.models:
-            similarities = model.GetSimilarities(data)
-            recomms = self.evaluation_module.get_recommendations_for_users(
-                users_list, similarities, n, scores_chart)
-            model_novelty_score = self.evaluation_module.calc_novelty_score(recomms, data)
-            print("Novely score model %s with %g recommendations per user: %g\n" %
-                  (model_name, n, model_novelty_score))
-
-    def find_nearest_to(self, find_nearest_to, n_nearest_to, print_nearest, view_nearest,
-                        print_category_match_index):
+    def find_nearest_items(self, find_nearest_to, n_nearest_to, print_nearest, view_nearest,
+                           print_category_match_index):
         nearestToItem = {}
-        data = self.data_handler.data
-        for model, model_name in self.models:
-            similarities = model.GetSimilarities(data)
-            nearest_neighbors, distances = \
-                self.evaluation_module.get_item_neighbors(find_nearest_to, similarities,
-                                                          n_nearest_to)
-            nearestToItem[model_name] = \
-                {"items": self.data_handler.getItemName(nearest_neighbors),
-                 "distances": distances}
 
-        examined_items = self.data_handler.getItemName([find_nearest_to])
-        if len(find_nearest_to) > 1:
-            examined_items = examined_items.squeeze()
-        if len(find_nearest_to) == 1:
-            examined_items = np.array([examined_items[0][0]])
+        for recommender, recommender_name in self.recommenders:
+            nearest_neighbors, distances = recommender.find_nearest_items(find_nearest_to,
+                                                                          n_nearest_to)
+            nearestToItem[recommender_name] = {"items": nearest_neighbors, "distances": distances}
 
-        for i, item in enumerate(examined_items):
-            # print("nearest to item %s:" % item)
-            for _, model_name in self.models:
-                item_neighbors = nearestToItem[model_name]["items"][i]
-                print("model %s:" % model_name)
+        for i, item in enumerate(find_nearest_to):
+
+            for recommender, recommender_name in self.recommenders:
+                item_neighbors = nearestToItem[recommender_name]["items"][i]
+                print("model %s:" % recommender_name)
                 if print_nearest:
                     self.viewer.print_recommendations(
-                        [item], item_neighbors, nearestToItem[model_name]["distances"][i])
+                        [[item]], item_neighbors, nearestToItem[recommender_name]["distances"][i])
                 if print_category_match_index:
-                    match_index = self.evaluation_module.neighbor_category_match(item,
-                                                                                 item_neighbors)
-                    print("category match index for item %s: %g" % (item, match_index))
+                    match_index = recommender.neighbor_category_match(item, item_neighbors)
+                    print("category match index of recommendations: %g" % (match_index))
 
                 if view_nearest:
                     self.viewer.view_thumbnails([item], item_neighbors)
             print("\n\n")
 
-    def recommend(self, users_ids, n_for_recom, scores_chart, print_recom, view_recom,
+    def recommend(self, user_ids, n_for_recom, print_recom, view_recom,
                   print_recom_category_match_index):
         recommendations = {}
-        data = self.data_handler.data
-        for model, model_name in self.models:
-            similarities = model.GetSimilarities(data)
-            recomms = self.evaluation_module.get_recommendations_for_users(
-                users_ids, similarities, n_for_recom, scores_chart)
-            recommendations[model_name] = {"items": self.data_handler.getItemName(recomms)}
 
-        for i, user in enumerate(users_ids):
-            for _, model_name in self.models:
-                user_recomms = recommendations[model_name]["items"][i]
-                print("model %s:" % model_name)
+        for recommender, recommender_name in self.recommenders:
+            recomms = recommender.recommend_for_users(user_ids, n_for_recom)
+            recommendations[recommender_name] = {"items": recomms}
+
+        for i, user in enumerate(user_ids):
+            for _, recommender_name in self.recommenders:
+                user_recomms = recommendations[recommender_name]["items"][i]
+                print("recommender %s:" % recommender_name)
                 if print_recom:
                     self.viewer.print_user_recommendations(user, user_recomms)
 
                 if view_recom:
-                    selected, unselected = self.data_handler.getUserActivitySplit(user)
-                    self.viewer.view_thumbnails(np.squeeze(selected), np.squeeze(unselected),
-                                                user_recomms)
+                    self.viewer.view_user_recommendations(user, user_recomms)
 
 
 if __name__ == "__main__":
-    from algorithms.RecSysAlgo import SparseSVDAlgo, RandomEmbeddingAlgo
+    from controllers.data_handler import DataHandler
+    from algorithms.RecSysAlgo import SparseSVDAlgo
     from similarity_functions.SimFunc import CosineSimilarity
-    from controllers.Model import Model, PopularityModel
-    import pandas as pd
+    from recommendation.Recommender import ItemSimilarityRecommender, RandomRecommender, \
+        PopularityRecommender
 
-    #data_specs = {"project_name": "boost", "data_name": "min_previews 5 - ch"}#, "variants": ["",
-                                                                                #            "ch",
-                                                                                #         "ja"]}
+    data_specs = {"project_name": "boost", "data_name": "min_previews 20 - us", "variants": ["",
+                                                                                            "ch",
+                                                                                         "ja"]}
 
-    data_specs = {"project_name": "story", "data_name": "min_previews 20"}
+    # data_specs = {"project_name": "story", "data_name": "min_previews 20"}
     dh = DataHandler(data_specs)
-    E = Evaluator(dh)
+    E = Evaluator()
 
-    # establish SVD algorithm
+    # establish SVD Recommender
     algo = SparseSVDAlgo(replace_zero_by=-1)
     simfunc = CosineSimilarity
     k = 20
-    model_1 = Model(algo, k, simfunc)
-    #E.add_model(model_1, "SparseSVD_k20_cosine")
+    scores_chart = {"0": 0, "1": 1}
+    SVD_recommender = ItemSimilarityRecommender(dh, algo, k, simfunc, scores_chart)
+    E.add_recommender(SVD_recommender, "SVD_k20_cosine")
 
     algo = SparseSVDAlgo(replace_zero_by=1)
     simfunc = CosineSimilarity
     k = 20
-    model_2 = Model(algo, k, simfunc)
-    E.add_model(model_2, "SparseSVD_k20_cosine_forclicks")
+    scores_chart = {"0": 1, "1": 1}
+    SVD_recommender_forClicks = ItemSimilarityRecommender(dh, algo, k, simfunc, scores_chart)
+    # E.add_recommender(SVD_recommender_forClicks, "SVD_k20_cosine_forClicks")
 
     # establish random recommendation algorithm
-    rand_algo = RandomEmbeddingAlgo()
-    model_rand = Model(rand_algo, k, simfunc)
-    # E.add_model(model_rand, "Random_k20_seedDefault")
+    random_recommender = RandomRecommender(dh)
+    # E.add_recommender(random_recommender, "Random_seedDefault")
 
-    popularity_model = PopularityModel()
-    # E.add_model(popularity_model, "PopularityModel")
+    # popularity-based recommender
+    popularity_recommender = PopularityRecommender(dh)
+    # E.add_recommendner(popularity_recommender, "Popularity")
 
-    E.evaluate(find_nearest_to=list(np.random.randint(149, size=10)), n_nearest_to=6,
-                  print_nearest=True, view_nearest=True, print_category_match_index=True)  # list(
-    # np.random.randint(625, size=15))
-    # E.evaluate(find_nearest_to=list(range(64, 72)), n_nearest_to=6, view_nearest=True,
-    #            print_category_match_index=True, calc_match_index=True)
-    #E.evaluate(calc_match_index=True, n_for_match_index=6)
-    # E.evaluate(get_recom_for=[0, 1, 2, 3, 4], n_for_recom=6,
-    #           recom_scores_chart={"0": 1, "1": 1}, view_recom=True)
-    # E.evaluate(calc_hitRate=True, n_for_hitRate=6, recom_scores_chart={"0": 1, "1": 1})
-    # E.evaluate(calc_novelty_score=True, n_for_novelty=6, recom_scores_chart={"0": 1, "1": 1})
+    E.evaluate(calc_hitRate=True, n_for_hitRate=6)
+    E.evaluate(calc_match_index=True, n_for_match_index=6)
+    E.evaluate(calc_novelty_score=True, n_for_novelty=6)
+    E.evaluate(find_nearest_to=list(np.random.randint(149, size=1)), n_nearest_to=6,
+               print_nearest=True, view_nearest=True, print_category_match_index=True)
+    E.evaluate(find_nearest_to=list(np.random.randint(149, size=2)), n_nearest_to=6,
+               print_nearest=True, view_nearest=True, print_category_match_index=True)
+    E.evaluate(get_recom_for=[0, 1, 2, 3, 4], n_for_recom=6, view_recom=True)
+    E.evaluate(get_recom_for=[5], n_for_recom=6, view_recom=True)

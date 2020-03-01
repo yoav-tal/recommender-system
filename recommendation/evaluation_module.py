@@ -14,9 +14,10 @@ class EvaluationModule:
 
         return hits / len(left_out)
 
-    def calc_novelty_score(self, recommendations, data):
+    def calc_novelty_score(self, recommendations):
 
         # get popularity rank
+        data = self.datahandler.data
         unique, counts = np.unique(data.template_index.values, return_counts=True)
         temp = np.argsort(counts)
         ranks = np.empty_like(temp)

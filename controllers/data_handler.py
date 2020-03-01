@@ -15,6 +15,12 @@ class DataHandler:
             data_specs["project_name"] == "story" else "configuration"
         self.LOO_data = {"usage_data": None, "left_out": pd.DataFrame()}
 
+    def getData(self, dataset):
+        if dataset == "all":
+            return self.data
+        elif dataset == "LOO":
+            return self.LOO_data["usage_data"]
+
     def getItemCategories(self, item):
         if type(item) != str and type(item) != np.str_:
             item = self.getItemName([[item]])[0][0]

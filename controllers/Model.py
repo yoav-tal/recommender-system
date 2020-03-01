@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class Model:
+class ItemSimilarityModel:
     # The Model class abstracts the idea that a model is the combination of an algorithm that
     # learns low-rank embeddings, a dimension k of the embeddings and a similarity metric. The
     # model controls the calls to the algorithm’s fit() functions and computes the similarity
