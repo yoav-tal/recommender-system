@@ -117,7 +117,7 @@ if __name__ == "__main__":
     from recommendation.Recommender import ItemSimilarityRecommender, RandomRecommender, \
         PopularityRecommender
 
-    data_specs = {"project_name": "boost", "data_name": "min_previews 20 - us", "variants": ["",
+    data_specs = {"project_name": "boost", "data_name": "min_previews 20", "variants": ["",
                                                                                             "ch",
                                                                                          "ja"]}
 
@@ -125,20 +125,14 @@ if __name__ == "__main__":
     dh = DataHandler(data_specs)
     E = Evaluator()
 
-    # establish SVD Recommender
-    algo = SparseSVDAlgo(replace_zero_by=-1)
-    simfunc = CosineSimilarity
-    k = 20
-    scores_chart = {"0": 0, "1": 1}
-    SVD_recommender = ItemSimilarityRecommender(dh, algo, k, simfunc, scores_chart)
-    E.add_recommender(SVD_recommender, "SVD_k20_cosine")
-
-    algo = SparseSVDAlgo(replace_zero_by=1)
-    simfunc = CosineSimilarity
-    k = 20
-    scores_chart = {"0": 1, "1": 1}
-    SVD_recommender_forClicks = ItemSimilarityRecommender(dh, algo, k, simfunc, scores_chart)
-    # E.add_recommender(SVD_recommender_forClicks, "SVD_k20_cosine_forClicks")
+    # establish SVD Recommenders
+    k_dimensions = [10, 20, 30]
+    for k in k_dimensions:
+        algo = SparseSVDAlgo(replace_zero_by=1)
+        simfunc = CosineSimilarity
+        scores_chart = {"0": 1, "1": 1}
+        SVD_recommender = ItemSimilarityRecommender(dh, algo, k, simfunc, scores_chart)
+        E.add_recommender(SVD_recommender, f"SVD_k%g_cosine" % k)
 
     # establish random recommendation algorithm
     random_recommender = RandomRecommender(dh)
@@ -149,11 +143,20 @@ if __name__ == "__main__":
     # E.add_recommendner(popularity_recommender, "Popularity")
 
     E.evaluate(calc_hitRate=True, n_for_hitRate=6)
-    E.evaluate(calc_match_index=True, n_for_match_index=6)
-    E.evaluate(calc_novelty_score=True, n_for_novelty=6)
-    E.evaluate(find_nearest_to=list(np.random.randint(149, size=1)), n_nearest_to=6,
-               print_nearest=True, view_nearest=True, print_category_match_index=True)
-    E.evaluate(find_nearest_to=list(np.random.randint(149, size=2)), n_nearest_to=6,
-               print_nearest=True, view_nearest=True, print_category_match_index=True)
-    E.evaluate(get_recom_for=[0, 1, 2, 3, 4], n_for_recom=6, view_recom=True)
-    E.evaluate(get_recom_for=[5], n_for_recom=6, view_recom=True)
+    # E.evaluate(calc_match_index=True, n_for_match_index=6)
+    # E.evaluate(calc_novelty_score=True, n_for_novelty=6)
+    # E.evaluate(find_nearest_to=list(range(10)), n_nearest_to=6,
+    #            print_nearest=True, view_nearest=True, print_category_match_index=True)
+    # E.evaluate(find_nearest_to=list(np.random.randint(149, size=1)), n_nearest_to=6,
+    #            print_nearest=True, view_nearest=True, print_category_match_index=True)
+    # E.evaluate(get_recom_for=list(range(6, 10)), n_for_recom=6, view_recom=True)
+    # E.evaluate(get_recom_for=[5], n_for_recom=6, view_recom=True)
+
+    # E.evaluate(calc_hitRate=True, n_for_hitRate=6, calc_match_index=True, n_for_match_index=6,
+    #        calc_novelty_score=True, n_for_novelty=6, find_nearest_to=list(range(10)),
+    #        n_nearest_to=6, print_nearest=True, view_nearest=True,
+    #        print_category_match_index=True, get_recom_for=list(range(6, 10)), n_for_recom=6,
+    #        view_recom=True)
+    # E.evaluate(find_nearest_to=list(np.random.randint(149, size=1)), n_nearest_to=6,
+    #        print_nearest=True, view_nearest=True, print_category_match_index=True,
+    #        get_recom_for=[5], n_for_recom=6, view_recom=True)

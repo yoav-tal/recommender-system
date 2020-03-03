@@ -62,15 +62,15 @@ class ThumbnailViewer:
         print("User: %g" % user_id)
         selected, unselected = self.datahandler.getUserActivitySplit(user_id)
         print("Selected previews:")
-        print(self.datahandler.getItemName(selected))
+        print(self.datahandler.getItemName([selected]))
         print("Unselected Previews:")
-        print(self.datahandler.getItemName(unselected))
+        print(self.datahandler.getItemName([unselected]))
         print("Recommended_items:")
         print(self.datahandler.getItemName([recommended_items]))
 
     def view_user_recommendations(self, user, user_recomms):
         selected_items, unselected_items = self.datahandler.getUserActivitySplit(user)
-        self.view_thumbnails(selected_items.squeeze(), unselected_items.squeeze(), user_recomms)
+        self.view_thumbnails(selected_items, unselected_items, user_recomms)
 
 
 def img_concat_h(im1, im2):

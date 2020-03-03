@@ -70,7 +70,7 @@ class DataHandler:
         user_previews = self.getUserActivity(user_id)
         selected = user_previews[np.where(user_previews[:, 1] == 1), 0]
         unselected = user_previews[np.where(user_previews[:, 1] == 0), 0]
-        return selected, unselected
+        return selected.squeeze(0), unselected.squeeze(0)
 
     def getUserIds(self, dataset="all"):
         if dataset == "all":
