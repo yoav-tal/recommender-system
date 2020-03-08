@@ -27,7 +27,7 @@ class ItemSimilarityModel:
             else:
                 print("fitting algorithm %s with k=%g" % (self.algo.name, self.k))
                 self.algo.fit(data, self.k)
-                self.embeddings = self.algo.embeddings
+                self.embeddings = self.algo.item_embeddings
                 self.embeddings_of = data
                 return self.embeddings
 
@@ -43,35 +43,60 @@ class ItemSimilarityModel:
             return self.similarities
 
 
-class PopularityModel:
-    def __init__(self):
-        self.similarities = None
+class LowDimEmbeddingModel:
+    # The Model class hosts a get_item_similarities function, get_item_embeddings and
+    # get_user_embeddings functions (both take data as argument).
+
+    def __init__(self, algo, k, SimFunc):
+        self.algo = algo
+        self.k = k
+        self.sim_func = SimFunc(k)
+        self.item_embeddings = None
+        self.user_embeddings = None
+        self.embeddings_of = None
+        self.item_similarities = None
+        self.similarities_of = None
 
     def GetEmbeddings(self, data):
-        raise NotImplementedError("Popularity Model is not based on embedding")
+        print("fitting algorithm %s with k=%g" % (self.algo.name, self.k))
+        self.algo.fit(data, self.k)
+        self.item_embeddings = self.algo.item_embeddings
+        self.user_embeddings = self.algo.user_embeddings
+        self.embeddings_of = data
 
-    def GetSimilarities(self, data):
-        popularity_ranks = self.get_popularity_ranks(data)
-        n_items = len(popularity_ranks)
-        self.similarities = np.repeat([popularity_ranks], n_items, axis=0)
-        return self.similarities
+    def GetItemEmbeddings(self, data):
+        if self.embeddings_of is not None and data.shape == self.embeddings_of.shape and \
+                (data.values == self.embeddings_of.values).all():
+            return self.item_embeddings
+        else:
+            self.GetEmbeddings(data)
+            return self.item_embeddings
 
-    def get_popularity_ranks(self, data):
-        # get a list in which in the position of the least popular we have 0, the next least
-        # popular is 1 and so on, the most popular is N (N the number of items)
-        unique, counts = np.unique(data.template_index.values, return_counts=True)
-        temp = np.argsort(counts)
-        ranks = np.empty_like(temp)
-        ranks[temp] = np.arange(len(temp))
+    def GetUserEmbeddings(self, data):
+        if self.embeddings_of is not None and data.shape == self.embeddings_of.shape and \
+                (data.values == self.embeddings_of.values).all():
+            return self.user_embeddings
+        else:
+            self.GetEmbeddings(data)
+            return self.user_embeddings
 
-        return ranks
+    def GetItemSimilarities(self, data):
+        if self.similarities_of is not None and data.shape == self.similarities_of.shape and \
+                (data.values == self.similarities_of.values).all():
+            return self.item_similarities
+        else:
+            print("calculating similarities by algorithm %s with k=%g and similarity function "
+                  "%s" % (self.algo.name, self.k, self.sim_func.name))
+            self.item_similarities = self.sim_func(self.GetItemEmbeddings(data))
+            self.similarities_of = data
+            return self.item_similarities
 
 
 if __name__ == "__main__":
-    from algorithms.RecSysAlgo import SparseSVDAlgo
+    from algorithms.RecSysAlgo import ItemsSVDAlgo
     from similarity_functions.SimFunc import CosineSimilarity
     import pandas as pd
-    alg = SparseSVDAlgo
+    alg = ItemsSVDAlgo
     simfunc = CosineSimilarity
     data = pd.read_csv("../data/RecSys data/min_previews 6.csv")
 

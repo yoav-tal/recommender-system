@@ -1,3 +1,4 @@
+import warnings
 import pandas as pd
 import numpy as np
 import json
@@ -49,8 +50,16 @@ class DataHandler:
             if dat[self.json_configuration_field] == item:
                 return self.thumbnails_path + dat["templateThumbnail"]
 
-    def getNumItems(self):
-        return self.items_map.template_index.max() + 1
+    def getNumItems(self, dataset="all"):
+        if dataset == "all":
+            return self.items_map.template_index.max() + 1
+        if dataset == "LOO":
+            item_indices = np.unique(self.LOO_data["usage_data"].template_index.values)
+            if item_indices.max() + 1 > len(item_indices):
+                warnings.warn("Some items are not represented in the LOO train set. \n"
+                              "These missing items may be recommended upon by Usage-independent "
+                              "recommenders.")
+            return item_indices.max() + 1
 
     def getUsage(self, user_ids):
         return self.data.loc[self.data.user_index.isin(user_ids)]
