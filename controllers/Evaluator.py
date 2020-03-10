@@ -117,16 +117,16 @@ if __name__ == "__main__":
     from recommendation.Recommender import ItemSimilarityRecommender, RandomRecommender, \
         PopularityRecommender, UserBasedRecommender
 
-    data_specs = {"project_name": "boost", "data_name": "min_previews 20 - us", "variants": ["",
-                                                                                            "ch",
-                                                                                         "ja"]}
+    # data_specs = {"project_name": "boost", "data_name": "min_previews 20 - us", "variants": ["",
+    #                                                                                         "ch",
+    #                                                                                      "ja"]}
 
-    # data_specs = {"project_name": "story", "data_name": "min_previews 20"}
+    data_specs = {"project_name": "story", "data_name": "min_previews 5"}
     dh = DataHandler(data_specs)
     E = Evaluator()
 
     # establish SVD Recommenders
-    k_dimensions = [10]
+    k_dimensions = [1, 2, 3, 4]
     for k in k_dimensions:
         algo = ItemsSVDAlgo(replace_zero_by=1)
         simfunc = CosineSimilarity
@@ -136,11 +136,11 @@ if __name__ == "__main__":
 
     # establish random recommendation algorithm
     random_recommender = RandomRecommender(dh)
-    # E.add_recommender(random_recommender, "Random_seedDefault")
+    E.add_recommender(random_recommender, "Random_seedDefault")
 
     # popularity-based recommender
     popularity_recommender = PopularityRecommender(dh)
-    # E.add_recommender(popularity_recommender, "Popularity")
+    E.add_recommender(popularity_recommender, "Popularity")
 
     # user based recommender
     for zero_replacement in [-1, 0, 1]:
@@ -151,8 +151,8 @@ if __name__ == "__main__":
                 scores_chart = {"0": zero_score, "1": 1}
                 SVD_user_based = UserBasedRecommender(dh, algo, k, simfunc, scores_chart,
                                                       n_neighbors=10, d_neighbors=5, d_user=5)
-                E.add_recommender(SVD_user_based, "zero_replacements: %g; k: %g; zero_score: %g" %
-                                  (zero_replacement, k, zero_score))
+                # E.add_recommender(SVD_user_based, "zero_replacements: %g; k: %g; zero_score: %g" %
+                #                   (zero_replacement, k, zero_score))
 
     E.evaluate(calc_hitRate=True, n_for_hitRate=6)
     # E.evaluate(calc_match_index=True, n_for_match_index=6)
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     #            print_nearest=True, view_nearest=True, print_category_match_index=True)
     # E.evaluate(find_nearest_to=list(np.random.randint(149, size=2)), n_nearest_to=6,
     #            print_nearest=True, view_nearest=True, print_category_match_index=True)
-    # E.evaluate(get_recom_for=list(range(6, 10)), n_for_recom=6, view_recom=True)
+    # E.evaluate(get_recom_for=list(range(1, 10)), n_for_recom=6, view_recom=True)
     # E.evaluate(get_recom_for=[5], n_for_recom=6, view_recom=True)
 
     # E.evaluate(calc_hitRate=True, n_for_hitRate=6, calc_match_index=True, n_for_match_index=6,

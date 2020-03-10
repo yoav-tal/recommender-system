@@ -45,26 +45,34 @@ class EvaluationModule:
             nearest_users, distances = self.find_nearest_users(users, user_embeddings, n_neighbors,
                                                                similarity_function)
 
-            # The variant that calls self.weight_items_by_users is correct, however it
+            # The variant that calls self.weight_item_based_recommendations is correct, however it
             # implements a weighing that is based on the *recommendations* to the neighbors (
             # weights the top-n items for each user, where n=depth_neighbors). Therefore,
             # if depth_neighbors=0, it will not implement a standard user-based collaborative
             # filtering recommendation (it will give one arbitrary item from each neighbor).
             # This method will be replaced by a more correct one, however
-            # self.weight_items_by_users will still be available for future reference.
+            # self.weight_item_based_recommendations will still be available for future reference.
             # This method is currently not computationally efficient, as it repeatedly computes
             # recommendations for the neighbors of each subject user. It will not undergo the
             # required improvement of computing all recommendations in advance and reading them
             # from memory.
-            weighted_items = self.weight_items_by_users(nearest_users, distances, item_similarity,
-                                                        scores_chart, depth_neighbors, dataset)
+
+            # weighted_items = self.weight_item_based_recommendations(
+            #   nearest_users, distances, item_similarity, scores_chart, depth_neighbors, dataset)
+
+            weighted_items = self.weight_items_by_users(
+                nearest_users, distances, item_similarity, scores_chart, depth_neighbors, dataset)
 
             rearranged_users = np.reshape(np.array(users), (len(users), 1))
             dummy_distances = np.ones(len(users))
 
-            user_weighted_items = self.weight_items_by_users(rearranged_users, dummy_distances,
-                                                             item_similarity, scores_chart,
-                                                             depth_user, dataset)
+            # user_weighted_items = self.weight_item_based_recommendations(
+            #     rearranged_users, dummy_distances, item_similarity, scores_chart, depth_user,
+            #     dataset)
+
+            user_weighted_items = self.weight_items_by_users(
+                rearranged_users, dummy_distances, item_similarity, scores_chart, depth_user,
+                dataset)
 
             weighted_items += user_weighted_items
 
@@ -210,20 +218,42 @@ class EvaluationModule:
             match_index += category_match
         return match_index / len(neighboring_items)
 
-    def weight_items_by_users(self, nearest_users, distances, item_similarity, scores_chart,
-                              depth, dataset="all"):
+    def weight_item_based_recommendations(self, nearest_users, distances, item_similarity, scores_chart,
+                                          depth, dataset="all"):
         # for each user, do something like in recommend_for_user with n_recommendations=depth. But
         # get distances, not only indices. Multiply weights by distances and add together the
         # weights from each row of nearest_users.
         num_items = self.datahandler.getNumItems(dataset)
         weighted_items = np.zeros((nearest_users.shape[0], num_items))
         for i, neighbors_set in enumerate(nearest_users):
-            nearest_items, weights = self.get_recommendations_for_users(
+            recommended_items, weights = self.get_recommendations_for_users(
                 neighbors_set, item_similarity, depth, scores_chart, dataset,
                 return_weights=True, discard_self_usage=False)
             # weight each neighbors recommendations by her distance from the subject user
             weights = (weights.T * distances[i]).T
             # sum weights from all neighbors
             for j in range(len(neighbors_set)):
-                weighted_items[i, nearest_items[j]] += weights[j]
+                weighted_items[i, recommended_items[j]] += weights[j]
+        return weighted_items
+
+    def weight_items_by_users(self, neighboring_users, distances, item_similarity, scores_chart,
+                              depth, dataset="all"):
+
+        num_items = self.datahandler.getNumItems(dataset)
+        weighted_items = np.zeros((neighboring_users.shape[0], num_items))
+        for i, neighbors_set in enumerate(neighboring_users):
+            for neighbor in neighbors_set:
+                used_items = self.datahandler.getUserActivity(neighbor, dataset=dataset)
+                neighboring_items, weights = self.get_item_neighbors(used_items, item_similarity,
+                                                                     depth)
+                # weight neighboring items of each neighboring user by the distance of the
+                # neighbor user from the subject user
+
+
+                ###  this is wrong since all neighboring items are from one user!!!
+                ### maybe should normalize in some way
+                weights = (weights.T * distances[i]).T
+                # sum weights from all neighbors
+                for j in range(len(neighbors_set)):
+                    weighted_items[i, nearest_items[j]] += weights[j]
         return weighted_items

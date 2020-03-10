@@ -26,7 +26,7 @@ class CosineSimilarity(SimFunc):
             embeddings = embeddings.T
         if "subject_vectors" in kwargs.keys():
             subject_vectors = kwargs["subject_vectors"]
-            subject_vectors  = subject_vectors.T if subject_vectors.shape[0] == self.k else \
+            subject_vectors = subject_vectors.T if subject_vectors.shape[0] == self.k else \
                 subject_vectors
             return self.func(subject_vectors, embeddings)
 
