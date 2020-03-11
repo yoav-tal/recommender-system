@@ -2,7 +2,7 @@ import pandas as pd
 
 
 def run_query(dates):
-    query_path = "../data/query data/demo for story.csv"
+    query_path = "../../data/query data/demo for story.csv"
     query_data = pd.read_csv(query_path)
     return query_data
 
