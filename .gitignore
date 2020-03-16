@@ -5,3 +5,6 @@ data/templates metadata
 data/RecSys data
 examples
 testing
+data/processing/seen
+sa-dwh-code-ds.json
+production/seen/similarity_matrices

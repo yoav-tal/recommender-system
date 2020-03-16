@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from production.seen.hyperparams import scores_chart
+from .hyperparams import scores_chart
 
 
 def get_recommendations(selected_items, unselected_items, similarities, n):

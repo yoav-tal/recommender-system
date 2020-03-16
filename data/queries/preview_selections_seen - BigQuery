@@ -10,5 +10,6 @@ left join `ltx-dwh-stg-ingested.usage.bambi_usage_editor_presented` r
     and l.session_id = r.session_id
     and l.template_name = r.template_name
     and reason in ('templatePreview_didTapEdit','templatePreview_didTapSeekToEndOfLastPage','templatePreview_playbackDidFinish')
-where l.redshifted_at > '2019-12-11'
+where l.redshifted_at > '{{start_date}}' -- '2019-12-11'
+  and l.redshifted_at < '{{end_date}}'
 order by l.id_for_vendor, l.device_timestamp
