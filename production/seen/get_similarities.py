@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from google.cloud import bigquery
-
+print("hello")
 from production.seen.hyperparams import query_path, data_path, processed_data_path, \
     similarities_filename, model
 from production.utils import run_query, run_preprocessing
